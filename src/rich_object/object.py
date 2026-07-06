@@ -83,6 +83,14 @@ class Object(dict):
     """
 
     def __init__(self, *args, lock=False, **kwargs):
+        """Initializes a new Object instance.
+
+        Args:
+            *args: Initial dictionary or iterable of key-value pairs to populate the Object.
+            lock (bool): If True, disables any create, update, or delete operations on this Object
+                         and all of its descendants/elements recursively.
+            **kwargs: Additional key-value pairs to populate the Object.
+        """
         object.__setattr__(self, '_lock', lock)
         object.__setattr__(self, '_initialized', False)
         
@@ -150,6 +158,17 @@ class Object(dict):
             self[k] = v
 
     def set(self, path: str, value):
+        """Sets a value at the specified path, creating nested Objects or ObjectLists as needed.
+
+        Supports dot notation for dict keys and bracket notation with indices for list elements.
+
+        Args:
+            path (str): The dot-and-bracket path (e.g., 'a.b.list[0].c').
+            value: The value to set at the path.
+
+        Raises:
+            TypeError: If the Object is locked or if the path encounters a non-container type.
+        """
         tokens = re.findall(r"[^.\[\]]+|\[\d+\]", path)
         parsed_tokens = []
         for t in tokens:
@@ -190,6 +209,15 @@ class Object(dict):
             curr[last_token] = value
 
     def get(self, key, default=None):
+        """Retrieves a value by key. Supports JSONPath expressions if the key starts with '$'.
+
+        Args:
+            key (str): The key or JSONPath expression (e.g., '$.store.book[*].price').
+            default: The fallback value to return if the key/path is not found.
+
+        Returns:
+            The matched value, a list of matched values (for JSONPath), or the default value.
+        """
         if isinstance(key, str) and key.startswith('$'):
             try:
                 from jsonpath_ng import parse
@@ -206,6 +234,19 @@ class Object(dict):
         return super().get(key, default)
 
     def __add__(self, other):
+        """Merges this Object with another dictionary or Object and returns a new Object.
+
+        Performs a deep merge, extending list items and recursively merging nested mappings.
+
+        Args:
+            other (dict): The dictionary or Object to merge with.
+
+        Returns:
+            Object: A new merged Object.
+
+        Raises:
+            TypeError: If this Object is locked, or other is not a dictionary.
+        """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be merged")
         if not isinstance(other, dict):
@@ -230,6 +271,11 @@ class Object(dict):
         return result
 
     def to_dict(self):
+        """Recursively converts this Object and all nested Objects/ObjectLists to standard Python dicts and lists.
+
+        Returns:
+            dict: A standard Python dict representation of this Object.
+        """
         def _convert(obj):
             if isinstance(obj, Object):
                 return {k: _convert(v) for k, v in obj.items()}
@@ -239,6 +285,18 @@ class Object(dict):
         return {k: _convert(v) for k, v in self.items()}
 
     def render(self, **kwargs):
+        """Renders Jinja2 templates in all string values recursively across the entire structure.
+
+        Args:
+            **kwargs: Additional context variables passed to the Jinja template rendering environment.
+
+        Returns:
+            Object: A copy of this Object with all template variables rendered.
+
+        Raises:
+            TypeError: If this Object is locked.
+            ImportError: If the 'jinja2' package is not installed.
+        """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be rendered")
         try:
@@ -321,6 +379,43 @@ class Object(dict):
         view="text",
         **kwargs
     ):
+        """Computes the difference between this Object and another object using DeepDiff.
+
+        Args:
+            other: The other object or dictionary to compare against.
+            ignore_order (bool): See DeepDiff documentation.
+            ignore_string_case (bool): See DeepDiff documentation.
+            exclude_paths (list/set): See DeepDiff documentation.
+            exclude_regex_paths (list/set): See DeepDiff documentation.
+            exclude_types (list/set): See DeepDiff documentation.
+            include_paths (list/set): See DeepDiff documentation.
+            significant_digits (int): See DeepDiff documentation.
+            math_epsilon (float): See DeepDiff documentation.
+            ignore_numeric_type_changes (bool): See DeepDiff documentation.
+            ignore_type_in_groups: See DeepDiff documentation.
+            ignore_type_subclasses (bool): See DeepDiff documentation.
+            ignore_string_type_changes (bool): See DeepDiff documentation.
+            ignore_nan_inequality (bool): See DeepDiff documentation.
+            ignore_encoding_errors (bool): See DeepDiff documentation.
+            ignore_private_variables (bool): See DeepDiff documentation.
+            truncate_datetime: See DeepDiff documentation.
+            cutoff_distance_for_pairs (float): See DeepDiff documentation.
+            cutoff_intersection_for_pairs (float): See DeepDiff documentation.
+            cache_size (int): See DeepDiff documentation.
+            cache_purge_level (int): See DeepDiff documentation.
+            log_frequency_in_sec (int): See DeepDiff documentation.
+            max_passes (int): See DeepDiff documentation.
+            max_diffs (int): See DeepDiff documentation.
+            verbose_level (int): See DeepDiff documentation.
+            view (str): See DeepDiff documentation.
+            **kwargs: Additional keyword arguments passed directly to DeepDiff.
+
+        Returns:
+            DeepDiff: The resulting comparison object.
+
+        Raises:
+            ImportError: If the 'deepdiff' package is not installed.
+        """
         try:
             from deepdiff import DeepDiff
         except ImportError:
