@@ -90,6 +90,16 @@ class Object(dict):
             lock (bool): If True, disables any create, update, or delete operations on this Object
                          and all of its descendants/elements recursively.
             **kwargs: Additional key-value pairs to populate the Object.
+
+        Example:
+            >>> obj = Object(name="John", address={"city": "New York"})
+            >>> obj.name
+            'John'
+            >>> obj.address.city
+            'New York'
+            >>> locked_obj = Object(x=1, lock=True)
+            >>> locked_obj.x = 2
+            TypeError: 'Object' is locked and cannot be modified
         """
         object.__setattr__(self, '_lock', lock)
         object.__setattr__(self, '_initialized', False)
@@ -168,6 +178,14 @@ class Object(dict):
 
         Raises:
             TypeError: If the Object is locked or if the path encounters a non-container type.
+
+        Example:
+            >>> obj = Object()
+            >>> obj.set("store.books[1].title", "Moby Dick")
+            >>> obj.store.books[1].title
+            'Moby Dick'
+            >>> obj.store.books[0] is None
+            True
         """
         tokens = re.findall(r"[^.\[\]]+|\[\d+\]", path)
         parsed_tokens = []
@@ -217,6 +235,13 @@ class Object(dict):
 
         Returns:
             The matched value, a list of matched values (for JSONPath), or the default value.
+
+        Example:
+            >>> obj = Object({"store": {"book": [{"price": 10}, {"price": 15}]}})
+            >>> obj.get("$.store.book[*].price")
+            [10, 15]
+            >>> obj.get("nonexistent_key", "default_val")
+            'default_val'
         """
         if isinstance(key, str) and key.startswith('$'):
             try:
@@ -246,6 +271,13 @@ class Object(dict):
 
         Raises:
             TypeError: If this Object is locked, or other is not a dictionary.
+
+        Example:
+            >>> obj1 = Object({"a": {"x": 1}, "b": [1, 2]})
+            >>> obj2 = {"a": {"y": 2}, "b": [3, 4]}
+            >>> merged = obj1 + obj2
+            >>> merged.to_dict()
+            {'a': {'x': 1, 'y': 2}, 'b': [1, 2, 3, 4]}
         """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be merged")
@@ -275,6 +307,14 @@ class Object(dict):
 
         Returns:
             dict: A standard Python dict representation of this Object.
+
+        Example:
+            >>> obj = Object(a=1, b={"c": 2})
+            >>> type(obj.b)
+            <class 'rich_object.object.Object'>
+            >>> d = obj.to_dict()
+            >>> type(d['b'])
+            <class 'dict'>
         """
         def _convert(obj):
             if isinstance(obj, Object):
@@ -296,6 +336,12 @@ class Object(dict):
         Raises:
             TypeError: If this Object is locked.
             ImportError: If the 'jinja2' package is not installed.
+
+        Example:
+            >>> obj = Object({"greeting": "Hello {{ name }}!"})
+            >>> rendered = obj.render(name="World")
+            >>> rendered.greeting
+            'Hello World!'
         """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be rendered")
@@ -415,6 +461,13 @@ class Object(dict):
 
         Raises:
             ImportError: If the 'deepdiff' package is not installed.
+
+        Example:
+            >>> obj1 = Object({"a": 1})
+            >>> obj2 = {"a": 2}
+            >>> diff = obj1.diff(obj2)
+            >>> 'values_changed' in diff
+            True
         """
         try:
             from deepdiff import DeepDiff
