@@ -342,6 +342,33 @@ class Object(dict):
             >>> rendered = obj.render(name="World")
             >>> rendered.greeting
             'Hello World!'
+
+            >>> # Using filters like 'int' and 'str'
+            >>> obj = Object({
+            ...     "number": "{{ '42' | int }}",
+            ...     "serialized_list": "{{ [1, 2, 3] | str }}",
+            ...     "serialized_dict": "{{ {'a': 1} | str }}"
+            ... })
+            >>> res = obj.render()
+            >>> res.number
+            42
+            >>> res.serialized_list
+            '[1, 2, 3]'
+
+            >>> # Passing helper objects like a faker instance or datetime
+            >>> from datetime import datetime
+            >>> class MockFaker:
+            ...     def name(self): return "Alice Smith"
+            ...
+            >>> obj = Object({
+            ...     "username": "{{ fake.name() }}",
+            ...     "created_year": "{{ now.strftime('%Y') }}"
+            ... })
+            >>> res = obj.render(fake=MockFaker(), now=datetime(2026, 7, 6))
+            >>> res.username
+            'Alice Smith'
+            >>> res.created_year
+            '2026'
         """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be rendered")
