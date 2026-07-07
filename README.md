@@ -10,9 +10,10 @@ pip install rich-object
 
 Install with optional format support:
 ```bash
-pip install rich-object[yaml]    # YAML support
-pip install rich-object[toml]    # TOML support
-pip install rich-object[all]     # All optional formats
+pip install rich-object[yaml]       # YAML support
+pip install rich-object[toml]       # TOML support
+pip install rich-object[validation] # JSON Schema validation
+pip install rich-object[all]        # All optional formats
 ```
 
 ## Features & Examples
@@ -39,7 +40,29 @@ print(obj.to_dict())
 # -> {'user': {'profile': {'settings': {'theme': 'dark'}}}}
 ```
 
-### 3. Structural Locks
+### 3. Schema Validation (`validate`)
+Ensure your configuration or data matches strict rules using standard JSON Schema. (Requires the `[validation]` extra).
+```python
+schema = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "age": {"type": "integer", "minimum": 18}
+    },
+    "required": ["name", "age"]
+}
+
+user = Object({"name": "Alice", "age": 30})
+
+# Validates successfully (returns True)
+user.validate(schema) 
+
+# Raises jsonschema.exceptions.ValidationError
+invalid_user = Object({"name": "Bob", "age": 15})
+invalid_user.validate(schema)
+```
+
+### 4. Structural Locks
 Prevent mutations (creation, updates, deletes) recursively across all nested dictionaries and lists by passing `lock=True`.
 ```python
 frozen = Object({"items": [1, 2], "user": {"id": 42}}, lock=True)
@@ -66,7 +89,7 @@ print(obj.store.books[1].title)  # -> "Moby Dick"
 print(obj.store.books[0])        # -> None (automatically padded slot)
 ```
 
-### 5. Deep Path & JSONPath Querying (`get`)
+### 6. Deep Path & JSONPath Querying (`get`)
 Query the data structure dynamically using standard dot paths or JSONPath queries (starting with `$`).
 ```python
 data = Object({
@@ -85,7 +108,7 @@ print(data.get("store.book[0].category"))  # -> "fiction"
 print(data.get("$..price"))                  # -> [8.95, 12.0]
 ```
 
-### 6. Deep Merging (`+` and `|`)
+### 7. Deep Merging (`+` and `|`)
 Perform clean, recursive merges of two structures using the `+` operator or the Python 3.9+ `|` operator. Nested lists are automatically concatenated, and conflicting keys default to the right-hand value. In-place merges (`|=` or `+=`) are also supported.
 ```python
 obj1 = Object({"a": {"x": 1}, "b": [1, 2]})
@@ -102,7 +125,7 @@ print(res.to_dict())
 obj1 |= obj2
 ```
 
-### 7. Data Transformation (`pick` and `omit`)
+### 8. Data Transformation (`pick` and `omit`)
 Easily shape your data using dot-paths. `pick` keeps only what you need, and `omit` removes what you don't. 
 ```python
 user = Object({
@@ -129,7 +152,7 @@ You can also use the `deep=True` flag with `omit()` to aggressively scrub a key 
 scrubbed_data = data.omit("password", deep=True)
 ```
 
-### 8. Template Rendering (`render`)
+### 9. Template Rendering (`render`)
 Render Jinja2 templates in all string values recursively across the entire structure (including nested dictionaries and lists).
 ```python
 obj = Object({

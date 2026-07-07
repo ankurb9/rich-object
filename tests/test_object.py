@@ -231,6 +231,42 @@ def test_omit():
     res4 = data.omit("nonexistent", "user.nonexistent")
     assert res4.to_dict() == data.to_dict()
 
+def test_validate():
+    import pytest
+    
+    try:
+        import jsonschema
+    except ImportError:
+        pytest.skip("jsonschema not installed")
+        
+    schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "age": {"type": "integer", "minimum": 0}
+        },
+        "required": ["name", "age"]
+    }
+    
+    # Valid object
+    valid_obj = Object({"name": "Alice", "age": 30})
+    assert valid_obj.validate(schema) is True
+    
+    # Invalid object (missing required field)
+    invalid_obj1 = Object({"name": "Bob"})
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        invalid_obj1.validate(schema)
+        
+    # Invalid object (wrong type)
+    invalid_obj2 = Object({"name": "Charlie", "age": "thirty"})
+    with pytest.raises(jsonschema.exceptions.ValidationError):
+        invalid_obj2.validate(schema)
+        
+    # Invalid schema itself
+    invalid_schema = {"type": "invalid_type"}
+    with pytest.raises(jsonschema.exceptions.SchemaError):
+        valid_obj.validate(invalid_schema)
+
 def test_render():
     obj = Object({
         "first_name": "John",

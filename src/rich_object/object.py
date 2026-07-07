@@ -6,6 +6,7 @@ from ._serializers import JsonSerializer, YamlSerializer, TomlSerializer
 from ._transforms import DataTransformer
 from ._renderer import TemplateRenderer
 from ._differ import ObjectDiffer
+from ._validator import ObjectValidator
 
 class ObjectList(list):
     """A list subclass that respects lock state and auto-wraps dicts into Objects."""
@@ -80,7 +81,7 @@ class ObjectList(list):
         return new_list
 
 
-class Object(DataTransformer, TemplateRenderer, ObjectDiffer, JsonSerializer, YamlSerializer, TomlSerializer, dict):
+class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, JsonSerializer, YamlSerializer, TomlSerializer, dict):
     """A dictionary subclass that allows dot notation attribute access
     and automatically creates missing paths (autovivification).
     
