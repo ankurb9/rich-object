@@ -103,6 +103,20 @@ print(rendered.greeting)  # -> "Hello Jane!"
 print(rendered.matrix)    # -> [["Welcome Jane"]]
 ```
 
+You can also pass entire modules or objects to the `render` method to use them inside your templates:
+```python
+import datetime
+
+obj = Object({
+    "year": "{{ dt.datetime(2026, 7, 6).year }}",
+    "future_date": "{{ (dt.datetime(2026, 7, 6) + dt.timedelta(days=5)).strftime('%Y-%m-%d') }}"
+})
+
+res = obj.render(dt=datetime)
+print(res.year)         # -> 2026
+print(res.future_date)  # -> "2026-07-11"
+```
+
 ### 8. Structural Diffing (`diff`)
 Identify differences between two objects using the built-in DeepDiff interface.
 ```python

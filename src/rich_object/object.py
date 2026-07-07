@@ -369,6 +369,18 @@ class Object(dict):
             'Alice Smith'
             >>> res.created_year
             '2026'
+
+            >>> # Passing entire modules
+            >>> import datetime
+            >>> obj = Object({
+            ...     "year": "{{ dt.datetime(2026, 7, 6).year }}",
+            ...     "future_date": "{{ (dt.datetime(2026, 7, 6) + dt.timedelta(days=5)).strftime('%Y-%m-%d') }}"
+            ... })
+            >>> res = obj.render(dt=datetime)
+            >>> res.year
+            2026
+            >>> res.future_date
+            '2026-07-11'
         """
         if object.__getattribute__(self, '_lock'):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be rendered")
