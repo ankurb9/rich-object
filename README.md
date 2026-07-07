@@ -8,14 +8,6 @@ A powerful dictionary wrapper subclass that enables dot-notation attribute acces
 pip install rich-object
 ```
 
-Install with optional format support:
-```bash
-pip install rich-object[yaml]       # YAML support
-pip install rich-object[toml]       # TOML support
-pip install rich-object[validation] # JSON Schema validation
-pip install rich-object[all]        # All optional formats
-```
-
 ## Features & Examples
 
 ### 1. Basic Usage & Dot Access
@@ -41,7 +33,7 @@ print(obj.to_dict())
 ```
 
 ### 3. Schema Validation (`validate`)
-Ensure your configuration or data matches strict rules using standard JSON Schema. (Requires the `[validation]` extra).
+Ensure your configuration or data matches strict rules using standard JSON Schema.
 ```python
 schema = {
     "type": "object",
