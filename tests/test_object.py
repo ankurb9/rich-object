@@ -1,3 +1,4 @@
+import json
 import pytest
 from rich_object.object import Object
 
@@ -86,6 +87,36 @@ def test_get_jsonpath():
     assert data2.get("$.store.book") == [{"category": "reference"}]
     assert data2.get("$..category") == "reference"
 
+def test_get_dot_path():
+    data = Object({
+        "store": {
+            "books": [
+                {"title": "Book 1"},
+                {"title": "Book 2"}
+            ]
+        },
+        "a.b": 10,
+        "a": {"b": 20}
+    })
+    
+    # Exact match overrides dot-path
+    assert data.get("a.b") == 10
+    
+    # Dot-path traversal
+    assert data.get("store.books[0].title") == "Book 1"
+    assert data.get("store.books[1].title") == "Book 2"
+    
+    # Missing paths should return default (or None)
+    assert data.get("store.books[5].title", "Missing") == "Missing"
+    assert data.get("store.shoes", "Missing") == "Missing"
+    assert data.get("store.books[0].author", "Missing") == "Missing"
+    
+    # Out of bounds indexing
+    assert data.get("store.books[-1].title") == "Book 2" # Python list indexing works
+    
+    # Invalid index (type error during parse, or string key in list)
+    assert data.get("store.books.title", "Missing") == "Missing"
+
 def test_add_operator():
     obj1 = Object({"a": {"x": 1}, "b": [1, 2], "mismatch": 10})
     obj2 = Object({"a": {"y": 2}, "b": [3, 4], "c": 3, "mismatch": [1, 2, 3]})
@@ -111,6 +142,94 @@ def test_add_operator():
     
     obj2.b.append(5)
     assert res.b == [1, 2, 3, 4]
+
+def test_or_operator():
+    obj1 = Object({"a": {"x": 1}, "b": [1, 2]})
+    obj2 = Object({"a": {"y": 2}, "b": [3, 4]})
+    
+    # __or__
+    res = obj1 | obj2
+    assert res.a.x == 1
+    assert res.a.y == 2
+    assert res.b == [1, 2, 3, 4]
+    assert isinstance(res, Object)
+    
+    # __ror__ (dict | Object)
+    dict_val = {"a": {"z": 3}, "b": [5]}
+    res2 = dict_val | obj1
+    assert res2.a.z == 3
+    assert res2.a.x == 1
+    assert res2.b == [5, 1, 2]
+    assert isinstance(res2, Object)
+    
+    # __ior__ (in-place)
+    obj3 = Object({"a": {"x": 1}, "b": [1, 2]})
+    obj3 |= obj2
+    assert obj3.a.x == 1
+    assert obj3.a.y == 2
+    assert obj3.b == [1, 2, 3, 4]
+
+def test_pick():
+    data = Object({
+        "id": 1,
+        "user": {
+            "firstname": "Alice",
+            "lastname": "Smith",
+            "secret": "hidden"
+        },
+        "role": "admin"
+    })
+    
+    # Single key
+    res = data.pick("id")
+    assert res.to_dict() == {"id": 1}
+    assert isinstance(res, Object)
+    
+    # Multiple and nested dot paths
+    res2 = data.pick("role", "user.firstname")
+    assert res2.to_dict() == {"role": "admin", "user": {"firstname": "Alice"}}
+    
+    # Missing paths are ignored
+    res3 = data.pick("nonexistent", "user.nonexistent")
+    assert res3.to_dict() == {}
+
+def test_omit():
+    data = Object({
+        "id": 1,
+        "password": "abc",
+        "user": {
+            "firstname": "Alice",
+            "lastname": "Smith",
+            "password": "xyz"
+        },
+        "users_list": [
+            {"name": "Bob", "password": "123"},
+            {"name": "Eve"}
+        ]
+    })
+    
+    # Exact top-level key omit
+    res = data.omit("password")
+    assert "password" not in res
+    assert "password" in res.user # Nested is untouched
+    assert "password" in res.users_list[0]
+    
+    # Dot-path omit
+    res2 = data.omit("user.password")
+    assert "password" in res2 # Top level untouched
+    assert "password" not in res2.user
+    
+    # Deep omit scrub
+    res3 = data.omit("password", deep=True)
+    assert "password" not in res3
+    assert "password" not in res3.user
+    assert "password" not in res3.users_list[0]
+    assert res3.users_list[0].name == "Bob"
+    assert res3.id == 1
+    
+    # Missing path ignore
+    res4 = data.omit("nonexistent", "user.nonexistent")
+    assert res4.to_dict() == data.to_dict()
 
 def test_render():
     obj = Object({
@@ -207,6 +326,141 @@ def test_render_nested_lists():
     assert res.matrix[0][1] == "plain"
     assert res.matrix[1][0] == "B"
     assert res.deep[0].nested_list[0] == "C"
+
+
+# ── JSON Tests ──────────────────────────────────────────────────
+
+def test_to_json():
+    obj = Object(name="John", age=30, address={"city": "NYC"})
+    result = json.loads(obj.to_json())
+    assert result["name"] == "John"
+    assert result["age"] == 30
+    assert result["address"]["city"] == "NYC"
+
+def test_to_json_formatting():
+    obj = Object(b=2, a=1)
+    # sort_keys
+    assert '"a": 1' in obj.to_json(sort_keys=True)
+    # indent
+    pretty = obj.to_json(indent=4)
+    assert "\n" in pretty
+
+def test_from_json():
+    obj = Object.from_json('{"name": "Jane", "scores": [10, 20]}')
+    assert obj.name == "Jane"
+    assert obj.scores == [10, 20]
+    assert isinstance(obj, Object)
+
+def test_from_json_locked():
+    obj = Object.from_json('{"x": 1}', lock=True)
+    assert obj.x == 1
+    with pytest.raises(TypeError):
+        obj.x = 2
+
+def test_json_file_roundtrip(tmp_path):
+    path = str(tmp_path / "test.json")
+    original = Object(users=[{"name": "Alice"}, {"name": "Bob"}], count=2)
+    original.to_json_file(path)
+
+    loaded = Object.from_json_file(path)
+    assert loaded.count == 2
+    assert loaded.users[0].name == "Alice"
+    assert loaded.users[1].name == "Bob"
+
+def test_json_file_locked(tmp_path):
+    path = str(tmp_path / "locked.json")
+    Object(val=42).to_json_file(path)
+    locked = Object.from_json_file(path, lock=True)
+    assert locked.val == 42
+    with pytest.raises(TypeError):
+        locked.val = 99
+
+
+# ── YAML Tests ──────────────────────────────────────────────────
+
+def test_to_yaml():
+    obj = Object(name="John", items=[1, 2, 3])
+    yaml_str = obj.to_yaml()
+    assert "name: John" in yaml_str
+    assert "items:" in yaml_str
+
+def test_from_yaml():
+    yaml_str = "name: Jane\nage: 25\nskills:\n  - python\n  - rust"
+    obj = Object.from_yaml(yaml_str)
+    assert obj.name == "Jane"
+    assert obj.age == 25
+    assert obj.skills == ["python", "rust"]
+
+def test_from_yaml_locked():
+    obj = Object.from_yaml("x: 10", lock=True)
+    assert obj.x == 10
+    with pytest.raises(TypeError):
+        obj.x = 20
+
+def test_yaml_file_roundtrip(tmp_path):
+    path = str(tmp_path / "config.yaml")
+    original = Object(database={"host": "localhost", "port": 5432}, debug=True)
+    original.to_yaml_file(path)
+
+    loaded = Object.from_yaml_file(path)
+    assert loaded.database.host == "localhost"
+    assert loaded.database.port == 5432
+    assert loaded.debug is True
+
+def test_yaml_file_locked(tmp_path):
+    path = str(tmp_path / "locked.yaml")
+    Object(key="value").to_yaml_file(path)
+    locked = Object.from_yaml_file(path, lock=True)
+    assert locked.key == "value"
+    with pytest.raises(TypeError):
+        locked.key = "changed"
+
+def test_yaml_roundtrip_nested():
+    original = Object(a={"b": {"c": [1, 2, {"d": 3}]}})
+    yaml_str = original.to_yaml()
+    restored = Object.from_yaml(yaml_str)
+    assert restored.a.b.c[2]["d"] == 3
+
+
+# ── TOML Tests ──────────────────────────────────────────────────
+
+def test_to_toml():
+    obj = Object(name="John", age=30)
+    toml_str = obj.to_toml()
+    assert 'name = "John"' in toml_str
+    assert "age = 30" in toml_str
+
+def test_from_toml():
+    toml_str = 'name = "Jane"\nage = 25\n\n[database]\nhost = "localhost"\nport = 5432'
+    obj = Object.from_toml(toml_str)
+    assert obj.name == "Jane"
+    assert obj.age == 25
+    assert obj.database.host == "localhost"
+    assert obj.database.port == 5432
+
+def test_from_toml_locked():
+    obj = Object.from_toml('x = 10', lock=True)
+    assert obj.x == 10
+    with pytest.raises(TypeError):
+        obj.x = 20
+
+def test_toml_file_roundtrip(tmp_path):
+    path = str(tmp_path / "config.toml")
+    original = Object(title="My App", database={"host": "localhost", "port": 5432})
+    original.to_toml_file(path)
+
+    loaded = Object.from_toml_file(path)
+    assert loaded.title == "My App"
+    assert loaded.database.host == "localhost"
+    assert loaded.database.port == 5432
+
+def test_toml_file_locked(tmp_path):
+    path = str(tmp_path / "locked.toml")
+    Object(key="value").to_toml_file(path)
+    locked = Object.from_toml_file(path, lock=True)
+    assert locked.key == "value"
+    with pytest.raises(TypeError):
+        locked.key = "changed"
 
 
 

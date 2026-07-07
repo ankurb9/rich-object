@@ -1,11 +1,18 @@
 # rich-object
 
-A powerful dictionary wrapper subclass that enables dot-notation attribute access, automatic nested path creation (autovivification), recursive locking, template rendering, JSONPath query resolution, and deep structure diffing.
+A powerful dictionary wrapper subclass that enables dot-notation attribute access, automatic nested path creation (autovivification), recursive locking, template rendering, JSONPath query resolution, deep structure diffing, and multi-format serialization (JSON, YAML, TOML).
 
 ## Installation
 
 ```bash
 pip install rich-object
+```
+
+Install with optional format support:
+```bash
+pip install rich-object[yaml]    # YAML support
+pip install rich-object[toml]    # TOML support
+pip install rich-object[all]     # All optional formats
 ```
 
 ## Features & Examples
@@ -59,8 +66,8 @@ print(obj.store.books[1].title)  # -> "Moby Dick"
 print(obj.store.books[0])        # -> None (automatically padded slot)
 ```
 
-### 5. JSONPath Querying (`get`)
-Query the data structure dynamically by passing JSONPath queries starting with `$`.
+### 5. Deep Path & JSONPath Querying (`get`)
+Query the data structure dynamically using standard dot paths or JSONPath queries (starting with `$`).
 ```python
 data = Object({
     "store": {
@@ -71,25 +78,58 @@ data = Object({
     }
 })
 
-# Retrieve a single value
-print(data.get("$.store.book[0].category"))  # -> "fiction"
+# Retrieve a single value using fast dot paths (no dependencies required)
+print(data.get("store.book[0].category"))  # -> "fiction"
 
-# Retrieve matching node value list
+# Retrieve matching node value list using JSONPath
 print(data.get("$..price"))                  # -> [8.95, 12.0]
 ```
 
-### 6. Deep Merging (`+`)
-Perform clean, recursive merges of two structures using the `+` operator. Nested lists are automatically concatenated, and conflicting keys default to the right-hand value.
+### 6. Deep Merging (`+` and `|`)
+Perform clean, recursive merges of two structures using the `+` operator or the Python 3.9+ `|` operator. Nested lists are automatically concatenated, and conflicting keys default to the right-hand value. In-place merges (`|=` or `+=`) are also supported.
 ```python
 obj1 = Object({"a": {"x": 1}, "b": [1, 2]})
 obj2 = Object({"a": {"y": 2}, "b": [3, 4]})
 
+# Both operators do exactly the same thing
 res = obj1 + obj2
+res = obj1 | obj2
+
 print(res.to_dict())
 # -> {'a': {'x': 1, 'y': 2}, 'b': [1, 2, 3, 4]}
+
+# In-place merge
+obj1 |= obj2
 ```
 
-### 7. Template Rendering (`render`)
+### 7. Data Transformation (`pick` and `omit`)
+Easily shape your data using dot-paths. `pick` keeps only what you need, and `omit` removes what you don't. 
+```python
+user = Object({
+    "id": 101,
+    "profile": {
+        "name": "Alice",
+        "email": "alice@example.com",
+        "secret": "xyz123"
+    }
+})
+
+# Keep only specific fields (reconstructs structure automatically)
+public_user = user.pick("id", "profile.name")
+# -> {'id': 101, 'profile': {'name': 'Alice'}}
+
+# Omit specific fields
+safe_user = user.omit("profile.secret")
+# -> {'id': 101, 'profile': {'name': 'Alice', 'email': 'alice@example.com'}}
+```
+
+You can also use the `deep=True` flag with `omit()` to aggressively scrub a key from the entire nested structure. This is incredibly powerful for removing passwords or PII from giant API payloads:
+```python
+# Removes "password" from the top level, inside 'profile', inside arrays, etc.
+scrubbed_data = data.omit("password", deep=True)
+```
+
+### 8. Template Rendering (`render`)
 Render Jinja2 templates in all string values recursively across the entire structure (including nested dictionaries and lists).
 ```python
 obj = Object({
@@ -126,4 +166,62 @@ obj2 = Object({"a": 1, "b": 3})
 difference = obj1.diff(obj2)
 print(difference)
 # -> {'values_changed': {"root['b']": {'new_value': 3, 'old_value': 2}}}
+```
+
+### 9. JSON Serialization
+Serialize to/from JSON strings and files. Uses the built-in `json` module — no extra dependencies.
+```python
+obj = Object(name="John", scores=[95, 87, 92])
+
+# To JSON string
+json_str = obj.to_json(indent=2)
+
+# From JSON string
+restored = Object.from_json('{"name": "John", "scores": [95, 87, 92]}')
+print(restored.name)  # -> "John"
+
+# File I/O
+obj.to_json_file("config.json")
+config = Object.from_json_file("config.json", lock=True)
+```
+
+### 10. YAML Serialization
+Serialize to/from YAML strings and files. Requires `pyyaml` (`pip install rich-object[yaml]`).
+```python
+obj = Object(database={"host": "localhost", "port": 5432}, debug=True)
+
+# To YAML string
+print(obj.to_yaml())
+# database:
+#   host: localhost
+#   port: 5432
+# debug: true
+
+# From YAML string
+config = Object.from_yaml("database:\n  host: localhost\n  port: 5432")
+print(config.database.host)  # -> "localhost"
+
+# File I/O — one-liner config loading
+config = Object.from_yaml_file("config.yaml", lock=True)
+```
+
+### 11. TOML Serialization
+Serialize to/from TOML strings and files. Requires `tomli-w` for writing; uses built-in `tomllib` on Python 3.11+ for reading (`pip install rich-object[toml]`).
+```python
+obj = Object(title="My App", database={"host": "localhost", "port": 5432})
+
+# To TOML string
+print(obj.to_toml())
+# title = "My App"
+#
+# [database]
+# host = "localhost"
+# port = 5432
+
+# From TOML string
+config = Object.from_toml('[database]\nhost = "localhost"\nport = 5432')
+print(config.database.host)  # -> "localhost"
+
+# File I/O
+config = Object.from_toml_file("pyproject.toml", lock=True)
 ```
