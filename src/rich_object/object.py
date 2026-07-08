@@ -294,6 +294,20 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
 
         return super().get(key, default)
 
+    @staticmethod
+    def _deep_merge(target, source):
+        """Recursively merges source into target in-place."""
+        for k, v in source.items():
+            if k in target:
+                if isinstance(target[k], dict) and isinstance(v, dict):
+                    Object._deep_merge(target[k], v)
+                elif isinstance(target[k], list) and isinstance(v, list):
+                    target[k].extend(copy.deepcopy(v))
+                else:
+                    target[k] = copy.deepcopy(v)
+            else:
+                target[k] = copy.deepcopy(v)
+
     def __add__(self, other):
         """Merges this Object with another dictionary or Object and returns a new Object.
 
@@ -321,21 +335,7 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
             return NotImplemented
 
         result = copy.deepcopy(self)
-        
-        def merge(target, source):
-            for k, v in source.items():
-                if k in target:
-                    if isinstance(target[k], dict) and isinstance(v, dict):
-                        merge(target[k], v)
-                    elif isinstance(target[k], list) and isinstance(v, list):
-                        # Use target[k].extend so ObjectList wraps new dicts
-                        target[k].extend(copy.deepcopy(v))
-                    else:
-                        target[k] = copy.deepcopy(v)
-                else:
-                    target[k] = copy.deepcopy(v)
-                    
-        merge(result, other)
+        self._deep_merge(result, other)
         return result
 
     def __or__(self, other):
@@ -360,19 +360,7 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
         if not isinstance(other, dict):
             return NotImplemented
 
-        def merge(target, source):
-            for k, v in source.items():
-                if k in target:
-                    if isinstance(target[k], dict) and isinstance(v, dict):
-                        merge(target[k], v)
-                    elif isinstance(target[k], list) and isinstance(v, list):
-                        target[k].extend(copy.deepcopy(v))
-                    else:
-                        target[k] = copy.deepcopy(v)
-                else:
-                    target[k] = copy.deepcopy(v)
-                    
-        merge(self, other)
+        self._deep_merge(self, other)
         return self
 
     def to_dict(self):
