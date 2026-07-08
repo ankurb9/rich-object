@@ -1,6 +1,8 @@
 import copy
 import re
 
+_PATH_RE_NEG = re.compile(r"[^.\[\]]+|\[-?\d+\]")
+
 class DataTransformer:
     """Data transformation methods for Object."""
 
@@ -81,7 +83,7 @@ class DataTransformer:
                 continue
 
             # Dot notation parsing
-            tokens = re.findall(r"[^.\[\]]+|\[-?\d+\]", k)
+            tokens = _PATH_RE_NEG.findall(k)
             if not tokens:
                 continue
                 

@@ -1,6 +1,9 @@
 import copy
 import re
 
+_PATH_RE = re.compile(r"[^.\[\]]+|\[\d+\]")
+_PATH_RE_NEG = re.compile(r"[^.\[\]]+|\[-?\d+\]")
+
 from ._serializers import JsonSerializer, YamlSerializer, TomlSerializer
 from ._transforms import DataTransformer
 from ._renderer import TemplateRenderer
@@ -9,6 +12,7 @@ from ._validator import ObjectValidator
 
 class ObjectList(list):
     """A list subclass that respects lock state and auto-wraps dicts into Objects."""
+    __slots__ = ('_lock',)
     def __init__(self, iterable=(), lock=False):
         self._lock = False
         super().__init__()
@@ -17,7 +21,7 @@ class ObjectList(list):
         self._lock = lock
 
     def _check_lock(self):
-        if getattr(self, '_lock', False):
+        if self._lock:
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be modified")
 
     def _wrap(self, item):
@@ -119,11 +123,10 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
             raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{key}'")
             
         if key not in self:
-            if object.__getattribute__(self, '_lock') and object.__getattribute__(self, '_initialized'):
+            lock = object.__getattribute__(self, '_lock')
+            if lock and object.__getattribute__(self, '_initialized'):
                 raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be modified")
-                
-            lock_val = object.__getattribute__(self, '_lock')
-            self[key] = Object(lock=lock_val)
+            self[key] = Object(lock=lock)
         return self[key]
 
     def __setattr__(self, key: str, value):
@@ -144,23 +147,21 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
 
     def __getitem__(self, key):
         if key not in self:
-            if object.__getattribute__(self, '_lock') and object.__getattribute__(self, '_initialized'):
+            lock = object.__getattribute__(self, '_lock')
+            if lock and object.__getattribute__(self, '_initialized'):
                 raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be modified")
-                
-            lock_val = object.__getattribute__(self, '_lock')
-            self[key] = Object(lock=lock_val)
+            self[key] = Object(lock=lock)
         return super().__getitem__(key)
 
     def __setitem__(self, key, value):
-        if object.__getattribute__(self, '_lock') and getattr(self, '_initialized', True):
+        lock = object.__getattribute__(self, '_lock')
+        if lock and getattr(self, '_initialized', True):
             raise TypeError(f"'{self.__class__.__name__}' is locked and cannot be modified")
 
-        lock_val = object.__getattribute__(self, '_lock')
-
         if isinstance(value, dict) and not isinstance(value, Object):
-            value = Object(value, lock=lock_val)
+            value = Object(value, lock=lock)
         elif isinstance(value, list) and not isinstance(value, ObjectList):
-            value = ObjectList(value, lock=lock_val)
+            value = ObjectList(value, lock=lock)
         super().__setitem__(key, value)
 
     def __delitem__(self, key):
@@ -192,7 +193,7 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
             >>> obj.store.books[0] is None
             True
         """
-        tokens = re.findall(r"[^.\[\]]+|\[\d+\]", path)
+        tokens = _PATH_RE.findall(path)
         parsed_tokens = []
         for t in tokens:
             if t.startswith("[") and t.endswith("]"):
@@ -271,7 +272,7 @@ class Object(DataTransformer, TemplateRenderer, ObjectDiffer, ObjectValidator, J
                 
             # Dot notation parsing
             if "." in key or "[" in key:
-                tokens = re.findall(r"[^.\[\]]+|\[-?\d+\]", key)
+                tokens = _PATH_RE_NEG.findall(key)
                 if not tokens:
                     return default
                     
