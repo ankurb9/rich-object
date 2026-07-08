@@ -145,7 +145,7 @@ scrubbed_data = data.omit("password", deep=True)
 ```
 
 ### 9. Template Rendering (`render`)
-Render Jinja2 templates in all string values recursively across the entire structure (including nested dictionaries and lists).
+Render Jinja2 templates in all string values recursively across the entire structure. Because the object passes itself as context, it allows for seamless **self-referencing** (using other properties from the same object inside a template).
 ```python
 obj = Object({
     "first_name": "Jane",

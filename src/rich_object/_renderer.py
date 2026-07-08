@@ -23,6 +23,15 @@ class TemplateRenderer:
             >>> rendered.greeting
             'Hello World!'
 
+            >>> # Self-referencing (accessing other keys in the same object)
+            >>> obj = Object({
+            ...     "first_name": "Jane",
+            ...     "last_name": "Doe",
+            ...     "full_name": "{{ first_name }} {{ last_name }}"
+            ... })
+            >>> obj.render().full_name
+            'Jane Doe'
+
             >>> # Using filters like 'int' and 'str'
             >>> obj = Object({
             ...     "number": "{{ '42' | int }}",
