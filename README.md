@@ -2,6 +2,22 @@
 
 A powerful dictionary wrapper subclass that enables dot-notation attribute access, automatic nested path creation (autovivification), recursive locking, template rendering, JSONPath query resolution, deep structure diffing, and multi-format serialization (JSON, YAML, TOML).
 
+## Table of Contents
+
+- [1. Basic Usage & Dot Access](#1-basic-usage-dot-access)
+- [2. Autovivification](#2-autovivification)
+- [3. Schema Validation (`validate`)](#3-schema-validation-validate)
+- [4. Structural Locks](#4-structural-locks)
+- [5. Advanced Property Setting (`set`)](#5-advanced-property-setting-set)
+- [6. Deep Path & JSONPath Querying (`get`)](#6-deep-path-jsonpath-querying-get)
+- [7. Deep Merging (`+` and `|`)](#7-deep-merging-and-)
+- [8. Data Transformation (`pick` and `omit`)](#8-data-transformation-pick-and-omit)
+- [9. Template Rendering (`render`)](#9-template-rendering-render)
+- [10. Structural Diffing (`diff`)](#10-structural-diffing-diff)
+- [11. JSON Serialization](#11-json-serialization)
+- [12. YAML Serialization](#12-yaml-serialization)
+- [13. TOML Serialization](#13-toml-serialization)
+
 ## Installation
 
 ```bash
@@ -71,7 +87,7 @@ except TypeError as e:
     print(e)  # -> 'ObjectList' is locked and cannot be modified
 ```
 
-### 4. Advanced Property Setting (`set`)
+### 5. Advanced Property Setting (`set`)
 Assign values safely to deeply nested paths using dot notation and bracket indices. Intermediary dictionary keys and list slots expand automatically.
 ```python
 obj = Object()
@@ -172,7 +188,7 @@ print(res.year)         # -> 2026
 print(res.future_date)  # -> "2026-07-11"
 ```
 
-### 8. Structural Diffing (`diff`)
+### 10. Structural Diffing (`diff`)
 Identify differences between two objects using the built-in DeepDiff interface.
 ```python
 obj1 = Object({"a": 1, "b": 2})
@@ -183,7 +199,7 @@ print(difference)
 # -> {'values_changed': {"root['b']": {'new_value': 3, 'old_value': 2}}}
 ```
 
-### 9. JSON Serialization
+### 11. JSON Serialization
 Serialize to/from JSON strings and files. Uses the built-in `json` module — no extra dependencies.
 ```python
 obj = Object(name="John", scores=[95, 87, 92])
@@ -200,7 +216,7 @@ obj.to_json_file("config.json")
 config = Object.from_json_file("config.json", lock=True)
 ```
 
-### 10. YAML Serialization
+### 12. YAML Serialization
 Serialize to/from YAML strings and files. Requires `pyyaml` (`pip install rich-object[yaml]`).
 ```python
 obj = Object(database={"host": "localhost", "port": 5432}, debug=True)
@@ -220,7 +236,7 @@ print(config.database.host)  # -> "localhost"
 config = Object.from_yaml_file("config.yaml", lock=True)
 ```
 
-### 11. TOML Serialization
+### 13. TOML Serialization
 Serialize to/from TOML strings and files. Requires `tomli-w` for writing; uses built-in `tomllib` on Python 3.11+ for reading (`pip install rich-object[toml]`).
 ```python
 obj = Object(title="My App", database={"host": "localhost", "port": 5432})
