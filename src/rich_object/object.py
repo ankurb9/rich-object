@@ -1,5 +1,4 @@
 import copy
-import json
 import re
 
 from ._serializers import JsonSerializer, YamlSerializer, TomlSerializer
