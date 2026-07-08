@@ -8,11 +8,13 @@ class JsonSerializer:
 
     def to_json(self, indent=None, sort_keys=False, **kwargs):
         """Serializes this Object to a JSON string.
+        
+        If `orjson` is installed, it is used for high-performance serialization.
 
         Args:
             indent (int, optional): Number of spaces for indentation. None for compact output.
             sort_keys (bool): If True, output keys in sorted order.
-            **kwargs: Additional keyword arguments passed to json.dumps.
+            **kwargs: Additional keyword arguments passed to json.dumps (or orjson.dumps).
 
         Returns:
             str: A JSON string representation.
@@ -22,27 +24,54 @@ class JsonSerializer:
             >>> obj.to_json()
             '{"name": "John", "age": 30}'
         """
-        return json.dumps(self.to_dict(), indent=indent, sort_keys=sort_keys, **kwargs)
+        try:
+            import orjson
+            option = 0
+            if indent == 2:
+                option |= orjson.OPT_INDENT_2
+            if sort_keys:
+                option |= orjson.OPT_SORT_KEYS
+            if "option" in kwargs:
+                option |= kwargs.pop("option")
+            return orjson.dumps(self.to_dict(), option=option, **kwargs).decode("utf-8")
+        except ImportError:
+            return json.dumps(self.to_dict(), indent=indent, sort_keys=sort_keys, **kwargs)
 
     def to_json_file(self, path, indent=2, sort_keys=False, **kwargs):
         """Serializes this Object and writes it to a JSON file.
+        
+        If `orjson` is installed, it is used for high-performance serialization.
 
         Args:
             path (str): File path to write to.
             indent (int): Number of spaces for indentation. Defaults to 2.
             sort_keys (bool): If True, output keys in sorted order.
-            **kwargs: Additional keyword arguments passed to json.dump.
+            **kwargs: Additional keyword arguments passed to json.dump (or orjson.dumps).
 
         Example:
             >>> obj = Object(name="John")
             >>> obj.to_json_file("config.json")
         """
-        with open(path, 'w') as f:
-            json.dump(self.to_dict(), f, indent=indent, sort_keys=sort_keys, **kwargs)
+        try:
+            import orjson
+            option = 0
+            if indent == 2:
+                option |= orjson.OPT_INDENT_2
+            if sort_keys:
+                option |= orjson.OPT_SORT_KEYS
+            if "option" in kwargs:
+                option |= kwargs.pop("option")
+            with open(path, 'wb') as f:
+                f.write(orjson.dumps(self.to_dict(), option=option, **kwargs))
+        except ImportError:
+            with open(path, 'w') as f:
+                json.dump(self.to_dict(), f, indent=indent, sort_keys=sort_keys, **kwargs)
 
     @classmethod
     def from_json(cls, string, lock=False):
         """Creates an Object from a JSON string.
+        
+        If `orjson` is installed, it is used for high-performance deserialization.
 
         Args:
             string (str): A JSON-formatted string.
@@ -56,11 +85,17 @@ class JsonSerializer:
             >>> obj.name
             'John'
         """
-        return cls(json.loads(string), lock=lock)  # type: ignore[call-arg]
+        try:
+            import orjson
+            return cls(orjson.loads(string), lock=lock)  # type: ignore[call-arg]
+        except ImportError:
+            return cls(json.loads(string), lock=lock)  # type: ignore[call-arg]
 
     @classmethod
     def from_json_file(cls, path, lock=False):
         """Creates an Object from a JSON file.
+        
+        If `orjson` is installed, it is used for high-performance deserialization.
 
         Args:
             path (str): Path to the JSON file.
@@ -72,8 +107,13 @@ class JsonSerializer:
         Example:
             >>> obj = Object.from_json_file("config.json")
         """
-        with open(path, 'r') as f:
-            return cls(json.load(f), lock=lock)  # type: ignore[call-arg]
+        try:
+            import orjson
+            with open(path, 'rb') as f:
+                return cls(orjson.loads(f.read()), lock=lock)  # type: ignore[call-arg]
+        except ImportError:
+            with open(path, 'r') as f:
+                return cls(json.load(f), lock=lock)  # type: ignore[call-arg]
 
 
 class YamlSerializer:

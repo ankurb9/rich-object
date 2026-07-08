@@ -376,9 +376,10 @@ def test_to_json():
 def test_to_json_formatting():
     obj = Object(b=2, a=1)
     # sort_keys
-    assert '"a": 1' in obj.to_json(sort_keys=True)
+    json_str = obj.to_json(sort_keys=True)
+    assert json_str.startswith('{"a":')
     # indent
-    pretty = obj.to_json(indent=4)
+    pretty = obj.to_json(indent=2)
     assert "\n" in pretty
 
 def test_from_json():

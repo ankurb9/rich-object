@@ -23,6 +23,10 @@ dependencies = [
     "jsonschema~=4.0",
 ]
 
+[project.optional-dependencies]
+fast-json = ["orjson"]
+all = ["orjson"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
