@@ -284,7 +284,7 @@ class TomlSerializer:
     def from_toml(cls, string, lock=False):
         """Creates an Object from a TOML string.
 
-        Uses ``tomllib`` (Python 3.11+) or the ``tomli`` backport.
+        Uses Python 3.11+ built-in ``tomllib``.
 
         Args:
             string (str): A TOML-formatted string.
@@ -292,32 +292,15 @@ class TomlSerializer:
 
         Returns:
             Object: A new Object instance.
-
-        Raises:
-            ImportError: If neither tomllib nor tomli is available.
-
-        Example:
-            >>> obj = Object.from_toml('name = \"John\"\\nage = 30')
-            >>> obj.name
-            'John'
         """
-        try:
-            import tomllib
-        except ModuleNotFoundError:
-            try:
-                import tomli as tomllib
-            except ImportError:
-                raise ImportError(
-                    "tomli is required for Python < 3.11 to read TOML. "
-                    "Install it with 'pip install tomli'"
-                )
+        import tomllib
         return cls(tomllib.loads(string), lock=lock)  # type: ignore[call-arg]
 
     @classmethod
     def from_toml_file(cls, path, lock=False):
         """Creates an Object from a TOML file.
 
-        Uses ``tomllib`` (Python 3.11+) or the ``tomli`` backport.
+        Uses Python 3.11+ built-in ``tomllib``.
 
         Args:
             path (str): Path to the TOML file.
@@ -325,22 +308,7 @@ class TomlSerializer:
 
         Returns:
             Object: A new Object instance.
-
-        Raises:
-            ImportError: If neither tomllib nor tomli is available.
-
-        Example:
-            >>> config = Object.from_toml_file("pyproject.toml", lock=True)
         """
-        try:
-            import tomllib
-        except ModuleNotFoundError:
-            try:
-                import tomli as tomllib
-            except ImportError:
-                raise ImportError(
-                    "tomli is required for Python < 3.11 to read TOML. "
-                    "Install it with 'pip install tomli'"
-                )
+        import tomllib
         with open(path, 'rb') as f:
             return cls(tomllib.load(f), lock=lock)  # type: ignore[call-arg]
