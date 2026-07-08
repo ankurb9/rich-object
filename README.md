@@ -4,13 +4,13 @@ A powerful dictionary wrapper subclass that enables dot-notation attribute acces
 
 ## Table of Contents
 
-- [1. Basic Usage & Dot Access](#1-basic-usage-dot-access)
+- [1. Basic Usage & Dot Access](#1-basic-usage--dot-access)
 - [2. Autovivification](#2-autovivification)
 - [3. Schema Validation (`validate`)](#3-schema-validation-validate)
 - [4. Structural Locks](#4-structural-locks)
 - [5. Advanced Property Setting (`set`)](#5-advanced-property-setting-set)
-- [6. Deep Path & JSONPath Querying (`get`)](#6-deep-path-jsonpath-querying-get)
-- [7. Deep Merging (`+` and `|`)](#7-deep-merging-and-)
+- [6. Deep Path & JSONPath Querying (`get`)](#6-deep-path--jsonpath-querying-get)
+- [7. Deep Merging (`+` and `|`)](#7-deep-merging--and-)
 - [8. Data Transformation (`pick` and `omit`)](#8-data-transformation-pick-and-omit)
 - [9. Template Rendering (`render`)](#9-template-rendering-render)
 - [10. Structural Diffing (`diff`)](#10-structural-diffing-diff)
